@@ -234,7 +234,7 @@ class TuyaDevice {
         let state
         switch (deviceTopic.type) {
             case 'bool':
-                state = value ? 'ON' : 'OFF'
+                state = value ? 'on' : 'off'
                 break;
             case 'int':
             case 'float':
