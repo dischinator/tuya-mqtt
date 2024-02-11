@@ -15,7 +15,8 @@ class TuyaDevice {
         // Build TuyAPI device options from device config info
         this.options = {
             id: this.config.id,
-            key: this.config.key
+            key: this.config.key,
+            issueRefreshOnConnect: true
         }
         if (this.config.name) { this.options.name = this.config.name.toLowerCase().replace(/\s|\+|#|\//g,'_') }
         if (this.config.ip) { 
@@ -55,6 +56,23 @@ class TuyaDevice {
 
         // Create the new Tuya Device
         this.device = new TuyAPI(JSON.parse(JSON.stringify(this.options)))
+
+        // Some new devices don't send data updates if the app isn't open.
+        // These devices need to be "forced" to send updates. You can do so by calling refresh() (see tuyapi docs), which will emit a dp-refresh event.
+        this.device.on('dp-refresh', (data) => {
+            if (typeof data === 'object') {
+                if (data.cid) {
+                    debug('Received dp-refresh data from device ' + this.options.id + ' cid: ' + data.cid + ' ->', JSON.stringify(data.dps))
+                } else {
+                    debug('Received dp-refresh data from device ' + this.options.id + ' ->', JSON.stringify(data.dps))
+                }
+                this.updateState(data)
+            } else {
+                if (data !== 'json obj data unvalid') {
+                    debug('Received string data from device ' + this.options.id + ' ->', data.replace(/[^a-zA-Z0-9 ]/g, ''))
+                }
+            }
+        })        
 
         // Listen for device data and call update DPS function if valid
         this.device.on('data', (data) => {
@@ -141,7 +159,7 @@ class TuyaDevice {
                 if (this.isRgbtwLight) {
                     if (this.config.hasOwnProperty('dpsColor') && this.config.dpsColor == key) {
                         this.updateColorState(data.dps[key])
-                    } else if (this.config.hasOwnProperty('dpsMode') && this.config.dpsMode == key) {
+                    } else if (this.config.hasOwnProperty('dpsMode') && this.config.dpsMode == key && this.dps.hasOwnProperty(this.config.dpsColor)) {
                         // If color/white mode is changing, force sending color state
                         // Allows overriding saturation value to 0% for white mode for the HSB device topics
                         this.dps[this.config.dpsColor].updated = true
@@ -200,7 +218,7 @@ class TuyaDevice {
                 // Only publish values if different from previous value
                 if (this.dps[key].updated) {
                     const dpsKeyTopic = dpsTopic + '/' + key + '/state'
-                    const data = this.dps.hasOwnProperty(key) ? this.dps[key].val.toString() : 'None'
+                    const data = this.dps.hasOwnProperty(key) && this.dps[key].hasOwnProperty('val') ? this.dps[key].val.toString() : 'None'
                     debugState('MQTT DPS'+key+': '+dpsKeyTopic+' -> ', data)
                     this.publishMqtt(dpsKeyTopic, data, false)
                     this.dps[key].updated = false
@@ -229,7 +247,7 @@ class TuyaDevice {
                 const components = deviceTopic.components.split(',')
                 for (let i in components) {
                     // If light is in white mode always report saturation 0%, otherwise report actual value
-                    state.push((components[i] === 's' && this.dps[this.config.dpsMode].val === 'white') ? 0 : this.color[components[i]])
+                    state.push((components[i] === 's' && this.dps.hasOwnProperty(this.config.dpsMode) && this.dps[this.config.dpsMode].val === 'white') ? 0 : this.color[components[i]])
                 }
                 state = (state.join(','))
                 break;
@@ -347,6 +365,7 @@ class TuyaDevice {
         switch (deviceTopic.type) {
             case 'bool':
                 if (command === 'toggle') {
+                    debug('ztz')
                     tuyaCommand.set = !this.dps[tuyaCommand.dps].val
                 } else {
                     command = this.parseBoolCommand(command)

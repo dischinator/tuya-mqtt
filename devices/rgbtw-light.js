@@ -11,7 +11,7 @@ class RGBTWLight extends TuyaDevice {
         }
 
         // If detection failed and no manual config return without initializing
-        if (!this.guess.dpsPower && !this.config.dpsPower) {
+        if (!this.config.dpsPower && (!!this.guess || !this.guess.dpsPower)) {
             debug('Automatic discovery of Tuya bulb settings failed and no manual configuration') 
             return
         }     
