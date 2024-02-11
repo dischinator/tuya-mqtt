@@ -433,9 +433,9 @@ class TuyaDevice {
                         : 4 + (r - g) / n
 
                                 
-        const hue = 60 * (h < 0 ? h + 6 : h)
-        const saturation = v && (n / v) * 100
-        const brightness = v * 100
+        const hue = Math.round(60 * (h < 0 ? h + 6 : h))
+        const saturation = Math.round(v && (n / v) * 100)
+        const brightness = Math.round(v * 100)
         return hue + ',' + saturation + ',' + brightness
     }
 
