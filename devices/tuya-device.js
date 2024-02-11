@@ -380,6 +380,14 @@ class TuyaDevice {
             case 'float':
                 tuyaCommand.set = this.parseNumberCommand(command, deviceTopic)
                 break;
+            case 'rgbToHsb':
+                debug('command rgb', command)
+                command = this.rgbToHsb(command)
+                debug('converted to hsb', command)
+
+                this.updateCommandColor(command, deviceTopic.components)
+                tuyaCommand.set = this.parseTuyaHsbColor()
+                break;
             case 'hsb':
                 this.updateCommandColor(command, deviceTopic.components)
                 tuyaCommand.set = this.parseTuyaHsbColor()
@@ -402,6 +410,33 @@ class TuyaDevice {
             }
             return true
         }
+    }
+
+    rgbToHsb(rgb) {
+        // Remove any leading "#" if present
+        rgb = rgb.replace(/^#/, '')
+
+        // Parse the hex string into RGB components
+        const r = parseInt(rgb.substring(0, 2), 16) / 255
+        const g = parseInt(rgb.substring(2, 4), 16) / 255
+        const b = parseInt(rgb.substring(4, 6), 16) / 255
+        const v = Math.max(r, g, b)
+        const n = v - Math.min(r, g, b)
+
+        const h =
+            n === 0
+                ? 0
+                : n && v === r
+                    ? (g - b) / n
+                    : v === g
+                        ? 2 + (b - r) / n
+                        : 4 + (r - g) / n
+
+                                
+        const hue = 60 * (h < 0 ? h + 6 : h)
+        const saturation = v && (n / v) * 100
+        const brightness = v * 100
+        return hue + ',' + saturation + ',' + brightness
     }
 
     // Convert simple bool commands to true/false
