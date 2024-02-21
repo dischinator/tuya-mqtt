@@ -653,8 +653,8 @@ class TuyaDevice {
     async reconnect() {
         if (!this.reconnecting) {
             this.reconnecting = true
-            debugError('Error connecting to device id '+this.options.id+'...retry in 10 seconds.')
-            await utils.sleep(10)
+            debugError('Error connecting to device id '+this.options.id+'...retry in 5 seconds.')
+            await utils.sleep(5)
             this.connectDevice()
             this.reconnecting = false
         }
